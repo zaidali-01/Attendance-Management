@@ -10,6 +10,7 @@ function LoginForm() {
   const callbackUrl = searchParams.get("callbackUrl") || "/students";
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -55,7 +56,33 @@ function LoginForm() {
           </div>
           <div className="form-field mb-4">
             <label htmlFor="password">Password</label>
-            <input id="password" name="password" type="password" required />
+            <div style={{ position: "relative" }}>
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                required
+                style={{ paddingRight: 64 }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                style={{
+                  position: "absolute",
+                  right: 10,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: "0.85rem",
+                  fontWeight: 600,
+                  color: "var(--brand-green-dark)",
+                }}
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
           </div>
           <button className="btn w-full justify-center" type="submit" disabled={loading}>
             {loading ? "Signing in…" : "Login"}

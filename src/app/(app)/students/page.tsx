@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { CLASS_CHOICES } from "@/lib/constants";
 import { deleteStudent } from "@/lib/actions";
 import ConfirmDeleteForm from "@/components/ConfirmDeleteForm";
+import AutoSubmitSelect from "@/components/AutoSubmitSelect";
 
 export default async function StudentsPage({
   searchParams,
@@ -25,18 +26,15 @@ export default async function StudentsPage({
       <form method="get" className="flex items-end gap-3 mb-5">
         <div className="form-field" style={{ maxWidth: 220 }}>
           <label htmlFor="className">Filter by class</label>
-          <select id="className" name="className" defaultValue={className || ""}>
+          <AutoSubmitSelect id="className" name="className" defaultValue={className || ""}>
             <option value="">All classes</option>
             {CLASS_CHOICES.map((c) => (
               <option key={c} value={c}>
                 Class {c}
               </option>
             ))}
-          </select>
+          </AutoSubmitSelect>
         </div>
-        <button className="btn btn-secondary" type="submit">
-          Apply
-        </button>
       </form>
 
       <Link className="btn" href="/students/new">
