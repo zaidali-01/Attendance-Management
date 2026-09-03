@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="login-wrap card">
+  <h1>Sign in</h1>
+  <form method="post">
+    <label for="username">Username</label>
+    <input type="text" id="username" name="username" required autofocus>
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" required>
+    <div class="actions">
+      <button class="btn" type="submit">Login</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

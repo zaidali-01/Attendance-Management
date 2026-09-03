@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h1>{{ student.name }} <span class="tag">Class {{ student.class_name }}</span></h1>
+  <a class="btn" href="{{ url_for('attendance.new_attendance', student_id=student.id) }}">+ Add Weekly Record</a>
+  <a class="btn btn-secondary" href="{{ url_for('students.list_students') }}">Back to Students</a>
+
+  <table style="margin-top:16px;">
+    <thead>
+      <tr>
+        <th>Start</th><th>End</th><th>Total Days</th><th>Present</th><th>Absent</th><th>%</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in records %}
+      <tr>
+        <td>{{ r.start_date.strftime('%d %b %Y') }}</td>
+        <td>{{ r.end_date.strftime('%d %b %Y') }}</td>
+        <td>{{ r.total_days }}</td>
+        <td>{{ r.present_days }}</td>
+        <td>{{ r.absent_days }}</td>
+        <td>{{ r.percentage }}%</td>
+        <td>
+          <a href="{{ url_for('attendance.edit_attendance', student_id=student.id, record_id=r.id) }}">Edit</a>
+          &nbsp;|&nbsp;
+          <form method="post" action="{{ url_for('attendance.delete_attendance', student_id=student.id, record_id=r.id) }}" style="display:inline" onsubmit="return confirm('Delete this weekly record?');">
+            <button type="submit" style="background:none;border:none;color:#b3413a;cursor:pointer;padding:0;font:inherit;">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7">No attendance records yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

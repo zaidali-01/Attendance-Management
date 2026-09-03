@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: attendance-al-ismat-academy
+    env: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn run:app"
+    disk:
+      name: attendance-data
+      mountPath: /opt/render/project/src/instance
+      sizeGB: 1
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: DATABASE_URL
+        value: sqlite:////opt/render/project/src/instance/attendance.db
