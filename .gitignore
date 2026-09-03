@@ -1,8 +1,20 @@
-__pycache__/
-*.pyc
-.venv/
-venv/
-instance/
-*.db
+# Next.js
+/node_modules
+/.next/
+/out/
+/build
+next-env.d.ts
+*.tsbuildinfo
+
+# Env
 .env
+.env*.local
+
+# Prisma
+prisma/dev.db
+
+# Misc
 .DS_Store
+*.pem
+npm-debug.log*
+.vercel

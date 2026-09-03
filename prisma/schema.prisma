@@ -1,0 +1,30 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Student {
+  id         Int      @id @default(autoincrement())
+  name       String
+  className  String
+  rollNo     String?
+  createdAt  DateTime @default(now())
+
+  attendance WeeklyAttendance[]
+}
+
+model WeeklyAttendance {
+  id          Int      @id @default(autoincrement())
+  studentId   Int
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  startDate   DateTime
+  endDate     DateTime
+  totalDays   Int
+  presentDays Int
+
+  @@index([studentId])
+}
