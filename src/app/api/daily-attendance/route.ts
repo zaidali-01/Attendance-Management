@@ -41,9 +41,11 @@ export const PUT = handle(async (req: Request) => {
   }
 
   const sql = await getDb();
+  // If the same student and day appear twice, the last one wins.
+  const latest = [...new Map(marks.map((m) => [`${m.studentId}|${m.day}`, m])).values()];
   await sql.begin(async (tx) => {
-    const clear = marks.filter((m) => m.status === null);
-    const set = marks.filter((m) => m.status !== null);
+    const clear = latest.filter((m) => m.status === null);
+    const set = latest.filter((m) => m.status !== null);
     for (const m of clear) await tx`delete from daily_attendance where student_id = ${m.studentId} and day = ${m.day}`;
     if (set.length) {
       const rows = set.map((m) => ({ student_id: m.studentId, day: m.day, status: m.status }));

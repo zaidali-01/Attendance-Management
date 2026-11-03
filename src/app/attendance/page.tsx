@@ -4,7 +4,7 @@ import { CalendarCheck, CheckCheck, ChevronLeft, ChevronRight, Eraser, FileText,
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MonthCalendar, STATUS_STYLE, StatusButtons, StatusLegend } from "@/components/attendance-ui";
+import { ClassDaySummary, MonthCalendar, STATUS_STYLE, StatusButtons, StatusLegend } from "@/components/attendance-ui";
 import { useToast } from "@/components/toast";
 import { Alert, EmptyState, Loading, PageHeader, Segmented, Spinner } from "@/components/ui";
 import { tally } from "@/lib/attendance";
@@ -177,26 +177,26 @@ function MarkView({ cls, roster, today, initialDay }: { cls: ClassName; roster: 
             const sameMonth = Number(today.slice(0, 4)) === y && Number(today.slice(5, 7)) === m;
             setDay(sameMonth ? today : monthStartOf(y, m));
           }}
+          status={(d) => {
+            // A whole-class holiday is shown as a holiday day.
+            if (!map) return null;
+            const t = dayTally(d);
+            return t.holiday > 0 && t.working === 0 ? "holiday" : null;
+          }}
           renderDay={(d) => {
             if (!map) return null;
             const t = dayTally(d);
-            if (t.holiday && t.working === 0) return <span className="mt-1 text-[10px] font-semibold text-sky-600">Holiday</span>;
-            if (!t.working) return null;
-            const done = t.working + t.holiday >= ids.size;
-            return (
-              <span className="mt-1 flex flex-col items-center gap-0.5">
-                <span className={`text-[10px] font-semibold ${done ? "text-emerald-700" : "text-amber-600"}`}>
-                  {t.attended}/{t.working}
-                </span>
-                {t.absent > 0 && <span className="h-1.5 w-1.5 rounded-full bg-red-500" title={`${t.absent} absent`} />}
-              </span>
-            );
+            return <ClassDaySummary counts={t} size={ids.size} />;
           }}
         />
-        <div className="mt-4 space-y-1 border-t border-emerald-900/10 pt-3 text-xs text-emerald-900/55">
-          <p>
-            Under each date: <b>present / marked</b>. Green = whole class marked, orange = some still missing, red dot = absences.
-          </p>
+        <div className="mt-4 space-y-2 border-t border-emerald-900/10 pt-3">
+          <div className="flex flex-wrap items-center gap-3 text-xs text-emerald-900/65">
+            <StatusLegend />
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-slate-200" /> Not marked
+            </span>
+          </div>
+          <p className="text-xs text-emerald-900/50">Each day shows how many students are present (P), late (L), absent (A) or on holiday (H).</p>
         </div>
       </section>
 

@@ -4,7 +4,7 @@ import { ArrowLeft, Banknote, CalendarCheck, ChevronLeft, ChevronRight, FileText
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
-import { MonthCalendar, STATUS_STYLE, StatusButtons, StatusLegend } from "@/components/attendance-ui";
+import { MonthCalendar, StatusButtons, StatusLegend } from "@/components/attendance-ui";
 import { PayModal, type PayTarget } from "@/components/pay-modal";
 import { StudentForm } from "@/components/student-form";
 import { useToast } from "@/components/toast";
@@ -12,7 +12,7 @@ import { Alert, ClassBadge, ConfirmDialog, Loading, Modal, Segmented, Spinner, T
 import { sumRows, weeklyRows } from "@/lib/attendance";
 import { api, errorMessage } from "@/lib/client";
 import { currentMonth, dueDate, formatDate, formatDay, joinedBy, monthEndOf, monthKey, monthStartOf, MONTHS, money, todayYmd } from "@/lib/format";
-import { DEFAULT_SETTINGS, METHOD_LABEL, STATUS_LABEL, type DayMark, type DayStatus, type Payment, type Settings, type StudentDetail, type WeeklyRecord } from "@/lib/types";
+import { DEFAULT_SETTINGS, METHOD_LABEL, type DayMark, type DayStatus, type Payment, type Settings, type StudentDetail, type WeeklyRecord } from "@/lib/types";
 
 type Tab = "fees" | "attendance";
 
@@ -355,14 +355,7 @@ function AttendanceTab({ student, reload }: { student: StudentDetail; reload: ()
             setYm({ year: y, month: m });
             setDay(monthStartOf(y, m));
           }}
-          dayClass={(d) => {
-            const s = byDay.get(d);
-            return s ? `${STATUS_STYLE[s].soft} ring-1 ring-inset` : "bg-white";
-          }}
-          renderDay={(d) => {
-            const s = byDay.get(d);
-            return s ? <span className="mt-0.5 text-[10px] font-bold">{STATUS_LABEL[s]}</span> : null;
-          }}
+          status={(d) => byDay.get(d)}
         />
         <div className="mt-4 rounded-xl border border-emerald-900/10 bg-emerald-50/40 p-3">
           <div className="mb-2 flex items-center justify-between text-sm">
