@@ -3,7 +3,7 @@
 import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, CircleDashed, Info, Loader2, X } from "lucide-react";
 import { useEffect } from "react";
 import { MONTHS } from "@/lib/format";
-import { classLabel, METHOD_LABEL, type Payment } from "@/lib/types";
+import { classLabel, classShort, METHOD_LABEL, type Payment } from "@/lib/types";
 
 export function PageHeader({
   title,
@@ -155,10 +155,11 @@ const CLASS_STYLE: Record<string, string> = {
   "12": "bg-rose-50 text-rose-700 ring-rose-600/20",
 };
 
-export function ClassBadge({ className: c }: { className: string }) {
+/** Class pill; `short` ("9th") for table columns already headed "Class". */
+export function ClassBadge({ className: c, short }: { className: string; short?: boolean }) {
   return (
     <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap ring-1 ring-inset ${CLASS_STYLE[c] ?? "bg-slate-50 text-slate-600 ring-slate-500/20"}`}>
-      {classLabel(c)}
+      {short ? classShort(c) : classLabel(c)}
     </span>
   );
 }

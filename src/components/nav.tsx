@@ -10,9 +10,9 @@ import { useUser } from "./user-context";
 const LINKS = [
   { href: "/", label: "Home", icon: Home },
   { href: "/students", label: "Students", icon: Users },
+  { href: "/attendance", label: "Attendance", icon: CalendarCheck },
   { href: "/fees", label: "Fees", icon: Wallet },
   { href: "/challans", label: "Challans", icon: ReceiptText },
-  { href: "/reports", label: "Attendance Report", icon: CalendarCheck },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -32,7 +32,8 @@ export function Nav() {
 
   if (pathname === "/login") return null;
 
-  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href) || (href === "/attendance" && pathname.startsWith("/reports"));
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });

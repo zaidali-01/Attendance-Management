@@ -170,7 +170,7 @@ function StudentsView() {
                           </Link>
                         </td>
                         <td className="px-4 py-3">
-                          <ClassBadge className={s.class_name} />
+                          <ClassBadge className={s.class_name} short />
                         </td>
                         <td className="px-4 py-3 tabular-nums">{s.roll_no ?? "—"}</td>
                         <td className="px-4 py-3 text-right tabular-nums">{s.monthly_fee ? money(s.monthly_fee) : <span className="text-amber-700">Not set</span>}</td>

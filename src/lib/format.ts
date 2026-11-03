@@ -74,3 +74,45 @@ export function percentage(total: number, present: number): number {
   if (!total) return 0;
   return Math.round((present / total) * 1000) / 10;
 }
+
+export const WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function toUtc(s: string): Date {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
+export function addDays(s: string, n: number): string {
+  const dt = toUtc(s);
+  dt.setUTCDate(dt.getUTCDate() + n);
+  return ymd(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate());
+}
+
+/** 0 = Sunday … 6 = Saturday */
+export function weekday(s: string): number {
+  return toUtc(s).getUTCDay();
+}
+
+/** The Monday on or before the date (weeks run Monday to Sunday). */
+export function weekStart(s: string): string {
+  return addDays(s, -((weekday(s) + 6) % 7));
+}
+
+export function monthStartOf(year: number, month: number): string {
+  return ymd(year, month, 1);
+}
+
+export function monthEndOf(year: number, month: number): string {
+  return ymd(year, month, daysInMonth(year, month));
+}
+
+export function eachDay(start: string, end: string): string[] {
+  const out: string[] = [];
+  for (let d = start; d <= end; d = addDays(d, 1)) out.push(d);
+  return out;
+}
+
+/** "2026-11-04" -> "Wed, 04 Nov" */
+export function formatDay(s: string): string {
+  return `${WEEKDAYS_SHORT[weekday(s)]}, ${formatDate(s).slice(0, 6)}`;
+}

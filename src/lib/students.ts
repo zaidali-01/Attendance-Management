@@ -1,6 +1,5 @@
 import "server-only";
 import { HttpError } from "./api";
-import { isValidYmd } from "./format";
 import { CLASSES, type ClassName } from "./types";
 
 export const STUDENT_COLUMNS = "id, name, class_name, roll_no, monthly_fee, admission_form, created_at";
@@ -43,17 +42,4 @@ export function parseStudent(body: Record<string, unknown>, partial = false): Pa
   }
   if (!partial || has("admission_form")) out.admission_form = Boolean(body.admission_form);
   return out;
-}
-
-export function parseAttendance(body: Record<string, unknown>) {
-  const { start_date, end_date } = body;
-  const total = Number(body.total_days);
-  const present = Number(body.present_days);
-  if (!isValidYmd(start_date) || !isValidYmd(end_date)) throw new HttpError(400, "Enter valid start and end dates");
-  if (end_date < start_date) throw new HttpError(400, "End date cannot be before start date");
-  if (!Number.isInteger(total) || total <= 0) throw new HttpError(400, "Total days must be more than zero");
-  if (!Number.isInteger(present) || present < 0 || present > total) {
-    throw new HttpError(400, "Present days must be between 0 and total days");
-  }
-  return { start_date, end_date, total_days: total, present_days: present };
 }

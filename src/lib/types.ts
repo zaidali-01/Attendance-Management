@@ -15,6 +15,22 @@ export function classLabel(c: string): string {
   return c === "other" ? "Other" : `Class ${c}`;
 }
 
+/** "9" -> "9th", for places that already say "Class". */
+export function classShort(c: string): string {
+  return c === "other" ? "Other" : `${c}th`;
+}
+
+export const DAY_STATUSES = ["present", "late", "absent", "holiday"] as const;
+export type DayStatus = (typeof DAY_STATUSES)[number];
+export const STATUS_LABEL: Record<DayStatus, string> = { present: "Present", late: "Late", absent: "Absent", holiday: "Holiday" };
+
+/** One student's mark for one day. */
+export interface DayMark {
+  student_id: number;
+  day: string; // YYYY-MM-DD
+  status: DayStatus;
+}
+
 export const PAYMENT_METHODS = ["online", "cash"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 export const METHOD_LABEL: Record<PaymentMethod, string> = { online: "Online", cash: "Cash" };
@@ -92,4 +108,6 @@ export interface DashboardResponse {
   feeNotSet: number;
   unpaid: Pick<Student, "id" | "name" | "class_name" | "roll_no" | "monthly_fee">[];
   recentPayments: (Payment & { name: string; class_name: ClassName })[];
+  /** Attendance marked for ?today= (the browser's date). */
+  today: { day: string; present: number; late: number; absent: number; holiday: number; marked: number } | null;
 }

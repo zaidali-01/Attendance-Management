@@ -39,17 +39,13 @@ function QrSvg({ text, size }: { text: string; size: number }) {
   );
 }
 
-function Line({ label, value, labelClass = "text-[12px]", valueClass = "text-[13px]", className = "" }: {
-  label: string;
-  value: React.ReactNode;
-  labelClass?: string;
-  valueClass?: string;
-  className?: string;
-}) {
+function Line({ label, value, className = "" }: { label: string; value: React.ReactNode; className?: string }) {
   return (
-    <div className={`flex min-w-0 items-end gap-1.5 ${className}`}>
-      <span className={`shrink-0 ${labelClass}`}>{label}</span>
-      <span className={`min-w-0 flex-1 truncate border-b border-black px-1 pb-px text-center font-semibold ${valueClass}`}>{value || " "}</span>
+    <div className={`flex min-w-0 items-end gap-2 ${className}`}>
+      <span className="shrink-0 text-[13px] text-neutral-700">{label}</span>
+      <span className="min-w-0 flex-1 truncate border-b border-black/70 px-1 pb-0.5 text-center text-[15px] leading-tight font-bold text-black">
+        {value || "\u00a0"}
+      </span>
     </div>
   );
 }
@@ -57,33 +53,34 @@ function Line({ label, value, labelClass = "text-[12px]", valueClass = "text-[13
 /** One copy of the Monthly Fee Voucher, drawn like the academy's printed template. */
 export const VoucherCopy = forwardRef<HTMLDivElement, { data: VoucherData; settings: Settings }>(function VoucherCopy({ data, settings }, ref) {
   return (
-    <div ref={ref} className="voucher flex flex-col border border-black bg-white px-5 pt-5 pb-4" style={{ width: COPY_WIDTH, height: 700 }}>
+    <div ref={ref} className="voucher flex flex-col border border-black bg-white px-5 pt-5 pb-4" style={{ width: COPY_WIDTH }}>
       <div className="text-center">
         <div className="text-[22px] leading-tight font-bold">AL-ISMAT Academy</div>
         <div className="text-[11.5px]">Since 2006</div>
-        <div className="mx-auto mt-2.5 w-fit border border-black px-5 py-1 text-[21px]">Monthly Fee Voucher</div>
+        <div className="mx-auto mt-2.5 w-fit border border-black px-5 py-1 text-[20px]">Monthly Fee Voucher</div>
       </div>
 
-      <div className="mt-3 flex justify-end">
-        <Line label="Date:" value={formatDate(data.issueDate)} className="w-[150px]" />
+      <div className="mt-4 flex justify-end">
+        <Line label="Date:" value={formatDate(data.issueDate)} className="w-[170px]" />
       </div>
-      <div className="mt-3 flex gap-3">
-        <Line label="Name:" value={data.name} className="flex-[1.7]" />
+      <Line label="Name:" value={data.name} className="mt-4" />
+      <div className="mt-4 flex gap-4">
+        <Line label="Class" value={classText(data.className)} className="flex-1" />
         <Line label="Roll #" value={data.rollNo} className="flex-1" />
       </div>
-      <Line label="Class" value={classText(data.className)} labelClass="text-[14px]" className="mt-4 w-[78%]" />
-      <div className="mt-4 flex gap-3">
-        <Line label="Month" value={MONTHS[data.month - 1]} labelClass="text-[14px]" className="flex-[1.2]" />
-        <Line label="Year" value={data.year} labelClass="text-[14px]" className="flex-1" />
+      <div className="mt-4 flex gap-4">
+        <Line label="Month" value={MONTHS[data.month - 1]} className="flex-[1.25]" />
+        <Line label="Year" value={data.year} className="flex-1" />
       </div>
 
-      <div className="mt-4 flex items-center justify-between border-2 border-black px-3 py-2.5">
+      <div className="mt-5 flex items-center justify-between border-2 border-black px-3 py-2.5">
         <span className="text-[16px]">Monthly Tuition Fee&nbsp;&nbsp;=</span>
-        <span className="text-[21px] font-bold">{settings.challanFee}/-</span>
+        <span className="text-[22px] font-bold">{settings.challanFee}/-</span>
       </div>
 
-      <div className="mt-3 text-[14px]">
-        Last day of Fee payment = <span className="font-bold">{formatDate(data.dueDate)}</span>
+      <div className="mt-3 flex items-baseline justify-between gap-2 text-[14px]">
+        <span>Last day of Fee payment =</span>
+        <span className="text-[15px] font-bold">{formatDate(data.dueDate)}</span>
       </div>
 
       <div className="mt-3 space-y-0.5 border border-black px-2.5 py-1.5 text-[10.5px] leading-snug">
@@ -102,7 +99,7 @@ export const VoucherCopy = forwardRef<HTMLDivElement, { data: VoucherData; setti
         <div className="text-[11px] font-bold">{QR_TITLE}</div>
         <div className="mt-0.5 bg-black p-[5px]">
           <div className="bg-white p-[5px]">
-            <QrSvg text={PAYMENT_QR} size={96} />
+            <QrSvg text={PAYMENT_QR} size={100} />
           </div>
         </div>
         <div className="mt-2 text-[15px] font-bold">Payment ONLY at above QR code</div>
@@ -111,7 +108,7 @@ export const VoucherCopy = forwardRef<HTMLDivElement, { data: VoucherData; setti
         </div>
       </div>
 
-      <div className="mt-auto flex flex-col items-center">
+      <div className="mt-7 flex flex-col items-center">
         <div className="w-[130px] border-t border-black" />
         <div className="mt-1 text-[12px]">AL-ISMAT Academy</div>
       </div>

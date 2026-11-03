@@ -1,14 +1,15 @@
 "use client";
 
-import { ArrowRight, Banknote, ClipboardList, ReceiptText, Smartphone, UserPlus, Users, Wallet } from "lucide-react";
+import { ArrowRight, Banknote, CalendarCheck, ClipboardList, ReceiptText, Smartphone, UserPlus, Users, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { PayModal, type PayTarget } from "@/components/pay-modal";
+import { STATUS_STYLE } from "@/components/attendance-ui";
 import { Alert, ClassBadge, EmptyState, Loading, MonthPicker, StatCard } from "@/components/ui";
 import { useUser } from "@/components/user-context";
 import { api, errorMessage } from "@/lib/client";
-import { currentMonth, formatDate, money, MONTHS } from "@/lib/format";
-import { CLASSES, classLabel, METHOD_LABEL, type DashboardResponse } from "@/lib/types";
+import { currentMonth, formatDate, formatDay, money, MONTHS, todayYmd } from "@/lib/format";
+import { CLASSES, classLabel, DAY_STATUSES, METHOD_LABEL, STATUS_LABEL, type DashboardResponse } from "@/lib/types";
 
 export default function HomePage() {
   const { user } = useUser();
@@ -16,14 +17,15 @@ export default function HomePage() {
   const [data, setData] = useState<{ key: string; res: DashboardResponse } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pay, setPay] = useState<PayTarget | null>(null);
+  const [today] = useState(todayYmd);
   const key = `${year}-${month}`;
 
   const load = useCallback(() => {
-    api<DashboardResponse>(`/api/dashboard?year=${year}&month=${month}`).then(
+    api<DashboardResponse>(`/api/dashboard?year=${year}&month=${month}&today=${today}`).then(
       (res) => setData({ key: `${year}-${month}`, res }),
       (e) => setError(errorMessage(e)),
     );
-  }, [year, month]);
+  }, [year, month, today]);
   useEffect(load, [load]);
 
   const d = data?.key === key ? data.res : null;
@@ -39,20 +41,53 @@ export default function HomePage() {
           <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Al-Ismat Academy</h1>
           <p className="mt-1 max-w-xl text-sm text-emerald-50/85">Students, monthly fees, fee challans and attendance, all in one place.</p>
           <div className="mt-5 flex flex-wrap gap-2">
-            <Link href="/students?add=1" className="btn bg-white text-emerald-800 hover:bg-emerald-50">
-              <UserPlus className="h-4 w-4" /> Add student
+            <Link href="/attendance" className="btn bg-white text-emerald-800 hover:bg-emerald-50">
+              <CalendarCheck className="h-4 w-4" /> Mark attendance
+            </Link>
+            <Link href="/fees" className="btn border border-white/30 text-white hover:bg-white/10">
+              <Wallet className="h-4 w-4" /> Record a fee
             </Link>
             <Link href="/challans" className="btn border border-white/30 text-white hover:bg-white/10">
               <ReceiptText className="h-4 w-4" /> Generate challan
             </Link>
-            <Link href="/fees" className="btn border border-white/30 text-white hover:bg-white/10">
-              <Wallet className="h-4 w-4" /> Record a fee
+            <Link href="/students?add=1" className="btn border border-white/30 text-white hover:bg-white/10">
+              <UserPlus className="h-4 w-4" /> Add student
             </Link>
           </div>
         </div>
       </section>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <section className="card flex flex-wrap items-center justify-between gap-4 p-5">
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-emerald-100 p-2.5 text-emerald-700">
+            <CalendarCheck className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-emerald-950">Today&apos;s attendance · {formatDay(today)}</h2>
+            {d?.today && d.today.marked > 0 ? (
+              <div className="mt-1 flex flex-wrap gap-1.5 text-xs">
+                <span className="text-emerald-900/60">
+                  {d.today.marked} of {d.totalStudents} marked:
+                </span>
+                {DAY_STATUSES.map((s) =>
+                  d.today![s] ? (
+                    <span key={s} className={`rounded-full px-2 py-0.5 font-semibold ring-1 ring-inset ${STATUS_STYLE[s].soft}`}>
+                      {d.today![s]} {STATUS_LABEL[s]}
+                    </span>
+                  ) : null,
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-emerald-900/60">{d ? "Not marked yet." : "…"}</p>
+            )}
+          </div>
+        </div>
+        <Link href="/attendance" className="btn-primary">
+          <CalendarCheck className="h-4 w-4" /> {d?.today?.marked ? "Continue marking" : "Mark attendance"}
+        </Link>
+      </section>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
         <h2 className="text-lg font-semibold text-emerald-950">
           Fees for {MONTHS[month - 1]} {year}
         </h2>

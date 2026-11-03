@@ -1,35 +1,42 @@
 "use client";
 
-import { ArrowLeft, Banknote, CalendarCheck, ChevronLeft, ChevronRight, FileText, Pencil, Plus, ReceiptText, Smartphone, Trash2, Undo2 } from "lucide-react";
+import { ArrowLeft, Banknote, CalendarCheck, ChevronLeft, ChevronRight, FileText, Pencil, ReceiptText, Smartphone, Trash2, Undo2 } from "lucide-react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
-import { AttendanceForm } from "@/components/attendance-form";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { MonthCalendar, STATUS_STYLE, StatusButtons, StatusLegend } from "@/components/attendance-ui";
 import { PayModal, type PayTarget } from "@/components/pay-modal";
 import { StudentForm } from "@/components/student-form";
 import { useToast } from "@/components/toast";
-import { Alert, ClassBadge, ConfirmDialog, EmptyState, Loading, Modal, Toggle } from "@/components/ui";
+import { Alert, ClassBadge, ConfirmDialog, Loading, Modal, Segmented, Spinner, Toggle } from "@/components/ui";
+import { sumRows, weeklyRows } from "@/lib/attendance";
 import { api, errorMessage } from "@/lib/client";
-import { currentMonth, dueDate, formatDate, joinedBy, money, monthKey, MONTHS, percentage, todayYmd } from "@/lib/format";
-import { DEFAULT_SETTINGS, METHOD_LABEL, type Payment, type Settings, type StudentDetail, type WeeklyRecord } from "@/lib/types";
+import { currentMonth, dueDate, formatDate, formatDay, joinedBy, monthEndOf, monthKey, monthStartOf, MONTHS, money, todayYmd } from "@/lib/format";
+import { DEFAULT_SETTINGS, METHOD_LABEL, STATUS_LABEL, type DayMark, type DayStatus, type Payment, type Settings, type StudentDetail, type WeeklyRecord } from "@/lib/types";
+
+type Tab = "fees" | "attendance";
 
 export default function StudentPage() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <StudentView />
+    </Suspense>
+  );
+}
+
+function StudentView() {
   const { id } = useParams<{ id: string }>();
+  const params = useSearchParams();
   const router = useRouter();
   const toast = useToast();
-  const [today] = useState(todayYmd);
-  const [now] = useState(currentMonth);
   const [student, setStudent] = useState<StudentDetail | null>(null);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [error, setError] = useState<string | null>(null);
-  const [year, setYear] = useState(now.year);
-  const [pay, setPay] = useState<PayTarget | null>(null);
-  const [undo, setUndo] = useState<Payment | null>(null);
+  const [tab, setTab] = useState<Tab>(params.get("tab") === "attendance" ? "attendance" : "fees");
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [week, setWeek] = useState<WeeklyRecord | "new" | null>(null);
-  const [deletingWeek, setDeletingWeek] = useState<WeeklyRecord | null>(null);
   const [busy, setBusy] = useState(false);
+  const [now] = useState(currentMonth);
 
   const load = useCallback(() => {
     api<StudentDetail>(`/api/students/${id}`).then(setStudent, (e) => setError(errorMessage(e)));
@@ -42,9 +49,7 @@ export default function StudentPage() {
   if (error) return <Alert kind="error">{error}</Alert>;
   if (!student) return <Loading />;
 
-  const paidFor = (m: number) => student.payments.find((p) => p.year === year && p.month === m) ?? null;
-  const yearPaid = student.payments.filter((p) => p.year === year);
-  const totals = student.attendance.reduce((a, r) => ({ total: a.total + r.total_days, present: a.present + r.present_days }), { total: 0, present: 0 });
+  const thisMonthPaid = student.payments.find((p) => p.year === now.year && p.month === now.month);
 
   async function setForm(v: boolean) {
     setStudent((s) => (s ? { ...s, admission_form: v } : s));
@@ -54,21 +59,6 @@ export default function StudentPage() {
     } catch (e) {
       setStudent((s) => (s ? { ...s, admission_form: !v } : s));
       toast("error", errorMessage(e));
-    }
-  }
-
-  async function doUndo() {
-    if (!undo) return;
-    setBusy(true);
-    try {
-      await api(`/api/payments?studentId=${undo.student_id}&year=${undo.year}&month=${undo.month}`, { method: "DELETE" });
-      toast("success", `${MONTHS[undo.month - 1]} ${undo.year} marked as unpaid`);
-      setUndo(null);
-      load();
-    } catch (e) {
-      toast("error", errorMessage(e));
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -84,235 +74,72 @@ export default function StudentPage() {
     }
   }
 
-  async function doDeleteWeek() {
-    if (!deletingWeek) return;
-    setBusy(true);
-    try {
-      await api(`/api/attendance/${deletingWeek.id}`, { method: "DELETE" });
-      toast("success", "Weekly record deleted");
-      setDeletingWeek(null);
-      load();
-    } catch (e) {
-      toast("error", errorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <Link href="/students" className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 hover:underline">
         <ArrowLeft className="h-4 w-4" /> All students
       </Link>
 
       <section className="card overflow-hidden">
-        <div className="bg-gradient-to-r from-emerald-50 to-white px-5 py-5 sm:px-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="flex min-w-0 items-center gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-700 text-xl font-bold text-white">
-                {student.name.trim().charAt(0).toUpperCase()}
-              </div>
-              <div className="min-w-0">
-                <h1 className="truncate text-2xl font-bold tracking-tight text-emerald-950">{student.name}</h1>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-emerald-900/65">
-                  <ClassBadge className={student.class_name} />
-                  <span>Roll # {student.roll_no ?? "—"}</span>
-                  <span>· Fee {student.monthly_fee ? money(student.monthly_fee) : "not set"} / month</span>
-                </div>
+        <div className="flex flex-wrap items-center justify-between gap-4 bg-gradient-to-r from-emerald-50 to-white px-5 py-5 sm:px-6">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-700 text-xl font-bold text-white">
+              {student.name.trim().charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <h1 className="truncate text-2xl font-bold tracking-tight text-emerald-950">{student.name}</h1>
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-emerald-900/65">
+                <ClassBadge className={student.class_name} />
+                <span>Roll # {student.roll_no ?? "—"}</span>
+                <span>Fee {student.monthly_fee ? money(student.monthly_fee) : "not set"} / month</span>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Link href={`/challans?student=${student.id}&month=${monthKey(now.year, now.month)}`} className="btn-primary">
-                <ReceiptText className="h-4 w-4" /> Fee challan
-              </Link>
-              <button className="btn-secondary" onClick={() => setEditing(true)}>
-                <Pencil className="h-4 w-4" /> Edit
-              </button>
-              <button className="btn-ghost text-red-600 hover:bg-red-50" onClick={() => setDeleting(true)} aria-label="Delete student">
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
           </div>
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-emerald-900/10 px-5 py-3 sm:px-6">
-          <Toggle checked={student.admission_form} onChange={setForm} label={<>Admission form {student.admission_form ? <b>submitted</b> : <b className="text-amber-700">not submitted</b>}</>} />
-          <span className="text-xs text-emerald-900/50">Challans always show {money(settings.challanFee)}</span>
-        </div>
-      </section>
-
-      <section className="card p-5 sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-emerald-950">Monthly fees</h2>
-            <p className="text-sm text-emerald-900/60">
-              {yearPaid.length} of 12 months paid in {year} · {money(yearPaid.reduce((a, p) => a + p.amount, 0))} received
-            </p>
-          </div>
-          <div className="inline-flex items-center gap-1 rounded-xl border border-emerald-900/15 bg-white p-1">
-            <button className="rounded-lg p-1.5 text-emerald-800 hover:bg-emerald-50" onClick={() => setYear((y) => y - 1)} aria-label="Previous year">
-              <ChevronLeft className="h-4 w-4" />
+          <div className="flex flex-wrap gap-2">
+            <button className="btn-secondary" onClick={() => setEditing(true)}>
+              <Pencil className="h-4 w-4" /> Edit
             </button>
-            <span className="px-2 text-sm font-semibold text-emerald-950 tabular-nums">{year}</span>
-            <button className="rounded-lg p-1.5 text-emerald-800 hover:bg-emerald-50" onClick={() => setYear((y) => y + 1)} aria-label="Next year">
-              <ChevronRight className="h-4 w-4" />
+            <button className="btn-ghost text-red-600 hover:bg-red-50" onClick={() => setDeleting(true)} aria-label="Delete student" title="Delete student">
+              <Trash2 className="h-4 w-4" />
             </button>
           </div>
         </div>
-
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {MONTHS.map((name, i) => {
-            const m = i + 1;
-            const p = paidFor(m);
-            const future = year * 12 + m > now.year * 12 + now.month;
-            const before = !p && !joinedBy(student.created_at, year, m);
-            const overdue = !p && !future && !before && today > dueDate(year, m, settings.dueDay);
-            const tone = p
-              ? "border-emerald-200 bg-emerald-50/70"
-              : overdue
-                ? "border-red-200 bg-red-50/50"
-                : future || before
-                  ? "border-dashed border-emerald-900/15 bg-white"
-                  : "border-amber-200 bg-amber-50/50";
-            return (
-              <div key={name} className={`flex flex-col rounded-xl border p-3 ${tone}`}>
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-emerald-950">{name}</span>
-                  <span
-                    className={`text-[11px] font-bold uppercase ${p ? "text-emerald-700" : overdue ? "text-red-600" : future || before ? "text-emerald-900/35" : "text-amber-700"}`}
-                  >
-                    {p ? "Paid" : overdue ? "Overdue" : future ? "Upcoming" : before ? "Before joining" : "Unpaid"}
-                  </span>
-                </div>
-                {p ? (
-                  <div className="mt-1 text-xs text-emerald-900/70">
-                    <div className="flex items-center gap-1 font-semibold text-emerald-950 tabular-nums">
-                      {money(p.amount)} · {p.method === "cash" ? <Banknote className="h-3 w-3" /> : <Smartphone className="h-3 w-3" />}
-                      {METHOD_LABEL[p.method]}
-                    </div>
-                    <div>on {formatDate(p.paid_on)}</div>
-                    {p.note && <div className="truncate italic">{p.note}</div>}
-                  </div>
-                ) : (
-                  <div className="mt-1 text-xs text-emerald-900/55">Due {formatDate(dueDate(year, m, settings.dueDay))}</div>
-                )}
-                <div className="mt-auto flex flex-wrap gap-1 pt-2">
-                  {p ? (
-                    <>
-                      <button className="btn-ghost px-2 py-1 text-xs" onClick={() => setPay({ student, year, month: m, payment: p })}>
-                        <Pencil className="h-3 w-3" /> Edit
-                      </button>
-                      <button className="btn-ghost px-2 py-1 text-xs text-red-600 hover:bg-red-50" onClick={() => setUndo(p)}>
-                        <Undo2 className="h-3 w-3" /> Undo
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button className="btn-secondary px-2.5 py-1 text-xs" onClick={() => setPay({ student, year, month: m, payment: null })}>
-                        Mark paid
-                      </button>
-                      <Link href={`/challans?student=${student.id}&month=${monthKey(year, m)}`} className="btn-ghost px-2 py-1 text-xs" title="Challan">
-                        <ReceiptText className="h-3 w-3" /> Challan
-                      </Link>
-                    </>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="card overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-6">
-          <div>
-            <h2 className="text-lg font-semibold text-emerald-950">Weekly attendance</h2>
-            <p className="text-sm text-emerald-900/60">
-              {student.attendance.length
-                ? `${totals.present} of ${totals.total} days present · ${percentage(totals.total, totals.present)}% overall`
-                : "No weekly records yet"}
-            </p>
+        <div className="grid divide-y divide-emerald-900/10 border-t border-emerald-900/10 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          <div className="flex items-center px-5 py-3">
+            <Toggle checked={student.admission_form} onChange={setForm} label={student.admission_form ? "Admission form submitted" : "Admission form pending"} />
           </div>
-          <div className="flex gap-2">
-            <Link href={`/reports?student=${student.id}`} className="btn-secondary">
+          <div className="px-5 py-3 text-sm">
+            <div className="text-xs font-semibold tracking-wide text-emerald-900/50 uppercase">{MONTHS[now.month - 1]} fee</div>
+            {thisMonthPaid ? (
+              <div className="font-semibold text-emerald-700">
+                Paid {money(thisMonthPaid.amount)} · {METHOD_LABEL[thisMonthPaid.method]}
+              </div>
+            ) : (
+              <div className="font-semibold text-amber-700">Not paid yet</div>
+            )}
+          </div>
+          <div className="flex items-center gap-2 px-5 py-3">
+            <Link href={`/challans?student=${student.id}&month=${monthKey(now.year, now.month)}`} className="btn-primary flex-1 px-3 py-2 text-xs">
+              <ReceiptText className="h-4 w-4" /> Fee challan
+            </Link>
+            <Link href={`/reports?student=${student.id}`} className="btn-secondary flex-1 px-3 py-2 text-xs">
               <FileText className="h-4 w-4" /> Report
             </Link>
-            <button className="btn-primary" onClick={() => setWeek("new")}>
-              <Plus className="h-4 w-4" /> Add week
-            </button>
           </div>
         </div>
-        {student.attendance.length === 0 ? (
-          <EmptyState icon={<CalendarCheck className="h-10 w-10" />} title="No attendance yet">
-            Add a week with its total and present days.
-          </EmptyState>
-        ) : (
-          <div className="overflow-x-auto border-t border-emerald-900/10">
-            <table className="w-full text-sm">
-              <thead className="bg-emerald-50/70 text-left text-xs font-semibold tracking-wide text-emerald-900/60 uppercase">
-                <tr>
-                  <th className="px-4 py-3">Week</th>
-                  <th className="px-4 py-3 text-right">Total</th>
-                  <th className="px-4 py-3 text-right">Present</th>
-                  <th className="px-4 py-3 text-right">Absent</th>
-                  <th className="px-4 py-3">Attendance</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-emerald-900/5">
-                {student.attendance.map((r) => {
-                  const pct = percentage(r.total_days, r.present_days);
-                  return (
-                    <tr key={r.id} className="hover:bg-emerald-50/40">
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {formatDate(r.start_date)} – {formatDate(r.end_date)}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums">{r.total_days}</td>
-                      <td className="px-4 py-3 text-right text-emerald-700 tabular-nums">{r.present_days}</td>
-                      <td className="px-4 py-3 text-right text-red-600 tabular-nums">{r.total_days - r.present_days}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="h-2 w-20 overflow-hidden rounded-full bg-emerald-900/10">
-                            <div className={`h-full ${pct >= 75 ? "bg-emerald-500" : pct >= 50 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${pct}%` }} />
-                          </div>
-                          <span className="text-xs font-semibold tabular-nums">{pct}%</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end gap-0.5">
-                          <button className="btn-ghost py-1.5" onClick={() => setWeek(r)} aria-label="Edit week">
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                          <button className="btn-ghost py-1.5 text-red-600 hover:bg-red-50" onClick={() => setDeletingWeek(r)} aria-label="Delete week">
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
       </section>
 
-      <PayModal
-        target={pay}
-        onClose={() => setPay(null)}
-        onSaved={() => {
-          setPay(null);
-          load();
-        }}
+      <Segmented
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: "fees", label: "Monthly fees" },
+          { value: "attendance", label: "Attendance" },
+        ]}
       />
-      <ConfirmDialog
-        open={!!undo}
-        title="Mark as unpaid?"
-        message={undo && <>The {MONTHS[undo.month - 1]} {undo.year} payment of {money(undo.amount)} will be removed.</>}
-        confirmLabel="Mark unpaid"
-        busy={busy}
-        onConfirm={doUndo}
-        onClose={() => setUndo(null)}
-      />
+
+      {tab === "fees" ? <FeesTab student={student} settings={settings} reload={load} /> : <AttendanceTab student={student} reload={load} />}
+
       <Modal open={editing} title="Edit student" onClose={() => setEditing(false)}>
         {editing && (
           <StudentForm
@@ -327,39 +154,305 @@ export default function StudentPage() {
           />
         )}
       </Modal>
-      <Modal open={week !== null} title={week === "new" ? "Add weekly attendance" : "Edit weekly attendance"} onClose={() => setWeek(null)}>
-        {week !== null && (
-          <AttendanceForm
-            studentId={student.id}
-            record={week === "new" ? null : week}
-            onCancel={() => setWeek(null)}
-            onSaved={() => {
-              toast("success", week === "new" ? "Week added" : "Week saved");
-              setWeek(null);
-              load();
-            }}
-          />
-        )}
-      </Modal>
-      <ConfirmDialog
-        open={!!deletingWeek}
-        title="Delete this week?"
-        message={deletingWeek && <>The record for {formatDate(deletingWeek.start_date)} – {formatDate(deletingWeek.end_date)} will be deleted.</>}
-        busy={busy}
-        onConfirm={doDeleteWeek}
-        onClose={() => setDeletingWeek(null)}
-      />
       <ConfirmDialog
         open={deleting}
         title="Delete student?"
         message={
           <>
-            <strong>{student.name}</strong> and all of their fee payments and attendance records will be deleted. This cannot be undone.
+            <strong>{student.name}</strong> and all of their fee payments and attendance will be deleted. This cannot be undone.
           </>
         }
         busy={busy}
         onConfirm={doDelete}
         onClose={() => setDeleting(false)}
+      />
+    </div>
+  );
+}
+
+function FeesTab({ student, settings, reload }: { student: StudentDetail; settings: Settings; reload: () => void }) {
+  const toast = useToast();
+  const [now] = useState(currentMonth);
+  const [today] = useState(todayYmd);
+  const [year, setYear] = useState(now.year);
+  const [pay, setPay] = useState<PayTarget | null>(null);
+  const [undo, setUndo] = useState<Payment | null>(null);
+  const [busy, setBusy] = useState(false);
+  const yearPaid = student.payments.filter((p) => p.year === year);
+
+  async function doUndo() {
+    if (!undo) return;
+    setBusy(true);
+    try {
+      await api(`/api/payments?studentId=${undo.student_id}&year=${undo.year}&month=${undo.month}`, { method: "DELETE" });
+      toast("success", `${MONTHS[undo.month - 1]} ${undo.year} marked as unpaid`);
+      setUndo(null);
+      reload();
+    } catch (e) {
+      toast("error", errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="card p-5 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-emerald-900/65">
+          <b className="text-emerald-950">{yearPaid.length} of 12</b> months paid in {year} · {money(yearPaid.reduce((a, p) => a + p.amount, 0))} received. Click a month to mark it paid.
+        </p>
+        <div className="inline-flex items-center gap-1 rounded-xl border border-emerald-900/15 bg-white p-1">
+          <button className="rounded-lg p-1.5 text-emerald-800 hover:bg-emerald-50" onClick={() => setYear((y) => y - 1)} aria-label="Previous year">
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <span className="px-2 text-sm font-semibold text-emerald-950 tabular-nums">{year}</span>
+          <button className="rounded-lg p-1.5 text-emerald-800 hover:bg-emerald-50" onClick={() => setYear((y) => y + 1)} aria-label="Next year">
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+        {MONTHS.map((name, i) => {
+          const m = i + 1;
+          const p = student.payments.find((x) => x.year === year && x.month === m) ?? null;
+          const future = year * 12 + m > now.year * 12 + now.month;
+          const before = !p && !joinedBy(student.created_at, year, m);
+          const overdue = !p && !future && !before && today > dueDate(year, m, settings.dueDay);
+          const state = p ? "Paid" : overdue ? "Overdue" : future ? "Upcoming" : before ? "Before joining" : "Unpaid";
+          const tone = p
+            ? "border-emerald-200 bg-emerald-50/70"
+            : overdue
+              ? "border-red-200 bg-red-50/40"
+              : future || before
+                ? "border-dashed border-emerald-900/15 bg-white"
+                : "border-amber-200 bg-amber-50/40";
+          const stateTone = p ? "text-emerald-700" : overdue ? "text-red-600" : future || before ? "text-emerald-900/35" : "text-amber-700";
+          return (
+            <div key={name} className={`group relative rounded-xl border transition hover:shadow-sm ${tone}`}>
+              <button type="button" className="w-full p-3 text-left" onClick={() => setPay({ student, year, month: m, payment: p })}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-emerald-950">{name}</span>
+                  <span className={`text-[10px] font-bold tracking-wide uppercase ${stateTone}`}>{state}</span>
+                </div>
+                <div className="mt-1 h-8 text-xs text-emerald-900/60">
+                  {p ? (
+                    <>
+                      <div className="flex items-center gap-1 font-semibold text-emerald-950 tabular-nums">
+                        {money(p.amount)} {p.method === "cash" ? <Banknote className="h-3 w-3" /> : <Smartphone className="h-3 w-3" />}
+                        {METHOD_LABEL[p.method]}
+                      </div>
+                      <div>on {formatDate(p.paid_on)}</div>
+                    </>
+                  ) : (
+                    <div>Due {formatDate(dueDate(year, m, settings.dueDay))}</div>
+                  )}
+                </div>
+              </button>
+              <div className="absolute right-2 bottom-2 flex gap-0.5">
+                {p ? (
+                  <button className="rounded-md p-1 text-red-500 hover:bg-red-50" title="Mark unpaid" onClick={() => setUndo(p)}>
+                    <Undo2 className="h-3.5 w-3.5" />
+                  </button>
+                ) : (
+                  <Link href={`/challans?student=${student.id}&month=${monthKey(year, m)}`} className="rounded-md p-1 text-emerald-700 hover:bg-emerald-100" title="Fee challan">
+                    <ReceiptText className="h-3.5 w-3.5" />
+                  </Link>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <PayModal
+        target={pay}
+        onClose={() => setPay(null)}
+        onSaved={() => {
+          setPay(null);
+          reload();
+        }}
+      />
+      <ConfirmDialog
+        open={!!undo}
+        title="Mark as unpaid?"
+        message={undo && <>The {MONTHS[undo.month - 1]} {undo.year} payment of {money(undo.amount)} will be removed.</>}
+        confirmLabel="Mark unpaid"
+        busy={busy}
+        onConfirm={doUndo}
+        onClose={() => setUndo(null)}
+      />
+    </section>
+  );
+}
+
+function AttendanceTab({ student, reload }: { student: StudentDetail; reload: () => void }) {
+  const toast = useToast();
+  const [today] = useState(todayYmd);
+  const [ym, setYm] = useState(currentMonth);
+  const [day, setDay] = useState(today);
+  const [data, setData] = useState<{ key: string; marks: DayMark[] } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [removing, setRemoving] = useState<WeeklyRecord | null>(null);
+  const [busy, setBusy] = useState(false);
+  const key = `${ym.year}-${ym.month}`;
+  const start = monthStartOf(ym.year, ym.month);
+  const end = monthEndOf(ym.year, ym.month);
+
+  useEffect(() => {
+    api<DayMark[]>(`/api/daily-attendance?studentId=${student.id}&start=${start}&end=${end}`).then(
+      (marks) => setData({ key: `${ym.year}-${ym.month}`, marks }),
+      (e) => toast("error", errorMessage(e)),
+    );
+  }, [student.id, start, end, ym, toast]);
+
+  const marks = data?.key === key ? data.marks : null;
+  const byDay = new Map((marks ?? []).map((m) => [m.day, m.status]));
+  const weeks = marks ? weeklyRows(marks, start, end) : [];
+  const total = sumRows(weeks);
+
+  async function mark(status: DayStatus | null) {
+    if (!marks) return;
+    const prev = marks;
+    const next = marks.filter((m) => m.day !== day);
+    if (status) next.push({ student_id: student.id, day, status });
+    setData({ key, marks: next });
+    setSaving(true);
+    try {
+      await api("/api/daily-attendance", { method: "PUT", json: { marks: [{ studentId: student.id, day, status }] } });
+    } catch (e) {
+      setData({ key, marks: prev });
+      toast("error", `Not saved: ${errorMessage(e)}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function removeLegacy() {
+    if (!removing) return;
+    setBusy(true);
+    try {
+      await api(`/api/attendance/${removing.id}`, { method: "DELETE" });
+      setRemoving(null);
+      reload();
+    } catch (e) {
+      toast("error", errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <section className="card self-start p-4 sm:p-5">
+        <MonthCalendar
+          year={ym.year}
+          month={ym.month}
+          selected={day}
+          today={today}
+          onSelect={setDay}
+          onMonthChange={(y, m) => {
+            setYm({ year: y, month: m });
+            setDay(monthStartOf(y, m));
+          }}
+          dayClass={(d) => {
+            const s = byDay.get(d);
+            return s ? `${STATUS_STYLE[s].soft} ring-1 ring-inset` : "bg-white";
+          }}
+          renderDay={(d) => {
+            const s = byDay.get(d);
+            return s ? <span className="mt-0.5 text-[10px] font-bold">{STATUS_LABEL[s]}</span> : null;
+          }}
+        />
+        <div className="mt-4 rounded-xl border border-emerald-900/10 bg-emerald-50/40 p-3">
+          <div className="mb-2 flex items-center justify-between text-sm">
+            <span className="font-semibold text-emerald-950">{formatDay(day)}</span>
+            {saving && <Spinner className="h-4 w-4 text-emerald-700" />}
+          </div>
+          <StatusButtons value={byDay.get(day) ?? null} onChange={mark} disabled={!marks} />
+        </div>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <StatusLegend />
+          <Link href={`/attendance?class=${student.class_name}`} className="text-xs font-semibold text-emerald-700 hover:underline">
+            Mark the whole class →
+          </Link>
+        </div>
+      </section>
+
+      <section className="card self-start overflow-hidden">
+        <div className="border-b border-emerald-900/10 px-5 py-4">
+          <h2 className="font-semibold text-emerald-950">
+            Weekly attendance · {MONTHS[ym.month - 1]} {ym.year}
+          </h2>
+          <p className="text-sm text-emerald-900/60">
+            {total.working
+              ? `${total.attended} of ${total.working} days attended (${total.pct}%) · ${total.late} late · ${total.absent} absent`
+              : "No days marked this month"}
+          </p>
+        </div>
+        {!marks ? (
+          <Loading />
+        ) : weeks.length === 0 ? (
+          <div className="px-5 py-10 text-center text-sm text-emerald-900/55">
+            <CalendarCheck className="mx-auto mb-2 h-8 w-8 text-emerald-300" />
+            Click a day on the calendar to mark it.
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-emerald-50/70 text-xs font-semibold tracking-wide text-emerald-900/60 uppercase">
+              <tr>
+                <th className="px-4 py-2.5 text-left">Week</th>
+                <th className="px-2 py-2.5 text-center">P</th>
+                <th className="px-2 py-2.5 text-center">L</th>
+                <th className="px-2 py-2.5 text-center">A</th>
+                <th className="px-2 py-2.5 text-center">H</th>
+                <th className="px-4 py-2.5 text-right">%</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-emerald-900/5">
+              {weeks.map((w) => (
+                <tr key={w.start}>
+                  <td className="px-4 py-2.5 whitespace-nowrap">
+                    {formatDate(w.start).slice(0, 6)} – {formatDate(w.end).slice(0, 6)}
+                  </td>
+                  <td className="px-2 py-2.5 text-center text-emerald-700 tabular-nums">{w.tally.present}</td>
+                  <td className="px-2 py-2.5 text-center text-amber-700 tabular-nums">{w.tally.late}</td>
+                  <td className="px-2 py-2.5 text-center text-red-600 tabular-nums">{w.tally.absent}</td>
+                  <td className="px-2 py-2.5 text-center text-sky-700 tabular-nums">{w.tally.holiday}</td>
+                  <td className="px-4 py-2.5 text-right font-semibold tabular-nums">{w.tally.pct == null ? "—" : `${w.tally.pct}%`}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {student.attendance.length > 0 && (
+          <div className="border-t border-emerald-900/10 px-5 py-4">
+            <h3 className="text-sm font-semibold text-emerald-950">Older weekly records</h3>
+            <p className="text-xs text-emerald-900/55">Entered as weekly totals before daily marking. They are included in the report.</p>
+            <ul className="mt-2 divide-y divide-emerald-900/5 text-sm">
+              {student.attendance.map((r) => (
+                <li key={r.id} className="flex items-center justify-between gap-2 py-1.5">
+                  <span>
+                    {formatDate(r.start_date)} – {formatDate(r.end_date)}: <b>{r.present_days}</b> of {r.total_days} days
+                  </span>
+                  <button className="rounded-md p-1 text-red-500 hover:bg-red-50" onClick={() => setRemoving(r)} aria-label="Delete record">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
+
+      <ConfirmDialog
+        open={!!removing}
+        title="Delete this weekly record?"
+        message={removing && <>The record for {formatDate(removing.start_date)} – {formatDate(removing.end_date)} will be deleted.</>}
+        busy={busy}
+        onConfirm={removeLegacy}
+        onClose={() => setRemoving(null)}
       />
     </div>
   );

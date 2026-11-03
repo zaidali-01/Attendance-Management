@@ -18,6 +18,8 @@ function client(): Sql {
       idle_timeout: 20,
       // Required for pooled connections (Neon / PgBouncer in transaction mode).
       prepare: false,
+      // "already exists, skipping" notices from CREATE ... IF NOT EXISTS are expected.
+      onnotice: () => {},
       // Return DATE columns as plain "YYYY-MM-DD" strings, never JS Dates.
       types: {
         date: {
@@ -53,6 +55,15 @@ CREATE TABLE IF NOT EXISTS weekly_attendance (
   present_days INT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS weekly_attendance_student ON weekly_attendance (student_id, start_date);
+
+-- Daily attendance marked on the calendar (weekly totals are worked out from these).
+CREATE TABLE IF NOT EXISTS daily_attendance (
+  student_id INT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  day        DATE NOT NULL,
+  status     TEXT NOT NULL CHECK (status IN ('present', 'late', 'absent', 'holiday')),
+  PRIMARY KEY (student_id, day)
+);
+CREATE INDEX IF NOT EXISTS daily_attendance_day ON daily_attendance (day);
 
 -- One row per paid month per student.
 CREATE TABLE IF NOT EXISTS fee_payments (
