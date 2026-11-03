@@ -1,40 +1,28 @@
-# Attendance Al-Ismat Academy
+# Al-Ismat Academy · Student Portal
 
-Single-user attendance management system for Al-Ismat Academy, built with Next.js (App Router) and deployed on Vercel with a Postgres database.
+Students, monthly fees, fee challans and weekly attendance for Al-Ismat Academy.
+Next.js (App Router) + Postgres, deployed on Vercel. Same stack as the Employee Attendance Portal.
 
 ## Features
-- Manage students (CRUD) across classes 9, 10, 11, 12
-- Record weekly attendance per student (start date, end date, total days, present days — absent days and percentage are calculated automatically)
-- Generate a PDF attendance report for any student over a chosen date range, showing week-by-week attendance in a table plus an overall total
+- **Home**: students per class, fees paid / unpaid for the month, amount collected (online vs cash), admission forms pending, unpaid list and recent payments.
+- **Students**: add / edit / delete with name, class (9, 10, 11, 12, Other), roll #, monthly fee and whether the admission form is submitted. Search and filter by class or form status. Click a form badge to switch it.
+- **Student profile**: the 12 months of the year with paid / unpaid / overdue, mark a month paid (Online or Cash, amount, date, note) or undo it, the challan for any month, and weekly attendance.
+- **Fees**: one month for everyone: mark paid / edit / undo, totals collected and outstanding, filters.
+- **Challans**: pick a student and a month; name, roll #, class are filled in automatically. Shows today's date and the last date to pay (both editable). Print gives two copies on one A4 page; "Image" downloads one copy (for WhatsApp). "Whole class" prints every student of a class, one page each.
+  - The fee on every challan is the standard challan fee (**Rs 13,000** by default), whatever the student's own fee is. The student's own fee is used when marking the fee as paid.
+  - The payment QR is the academy's Raast QR (ALISMAT INSTITUTE), drawn sharp from its code.
+- **Attendance report**: weekly records for one student over an optional date range; print or save as an image.
+- **Settings**: challan fee, last day to pay, late fine, "no classes after the …" day and the WhatsApp number.
 
 ## Local setup
-
 ```bash
 npm install
-cp .env.example .env   # fill in DATABASE_URL, NEXTAUTH_SECRET, ADMIN_USERNAME, ADMIN_PASSWORD_HASH
-npx prisma migrate dev --name init
+cp .env.example .env.local   # set DATABASE_URL
 npm run dev
 ```
+Tables are created automatically on first use. Students and attendance from the first (Prisma) version — the `"Student"` and `"WeeklyAttendance"` tables — are copied over once, keeping their ids; the old tables are left untouched.
 
-Visit http://localhost:3000 and log in with `ADMIN_USERNAME` / the plaintext password you hashed into `ADMIN_PASSWORD_HASH`.
+The first login reuses `ADMIN_USERNAME` / `ADMIN_PASSWORD_HASH` from the first version, so the password stays the same; otherwise it is **admin / admin123** — change it under the user menu → Change password.
 
-Generate a password hash with:
-```bash
-node -e "console.log(require('bcryptjs').hashSync('yourpassword', 10).replace(/\$/g, '\\\$'))"
-```
-**Important:** Next.js expands `$VAR`-style patterns inside `.env` files, so every literal `$` in a bcrypt hash must be escaped as `\$` (the command above does this). Without escaping, the hash gets silently mangled and login will fail with no obvious error.
-
-## Deployment (Vercel + free Postgres)
-
-1. Push this repo to GitHub (already done — `github.com/zaidali-01/Attendance-Management`).
-2. In your Vercel dashboard, create a new project and import that GitHub repo.
-3. Before the first deploy, go to the project's **Storage** tab → **Create Database** → choose **Postgres** (Neon-backed, free tier). Vercel auto-injects `DATABASE_URL` (and related `POSTGRES_*` vars) into your project's environment variables.
-4. In **Settings → Environment Variables**, add:
-   - `NEXTAUTH_SECRET` — any long random string (`openssl rand -base64 32`)
-   - `NEXTAUTH_URL` — your production URL, e.g. `https://attendance-al-ismat-academy.vercel.app`
-   - `ADMIN_USERNAME` — e.g. `admin`
-   - `ADMIN_PASSWORD_HASH` — bcrypt hash generated as above, with `$` escaped as `\$`
-5. Deploy. The `build` script runs `prisma migrate deploy` automatically before `next build`, so the database schema is created/updated on every deploy — no manual migration step needed.
-
-## Branding
-Theme color: mid-shade green (`#2e7d52`).
+## Deploy
+Push to GitHub; Vercel builds with `next build`. Only `DATABASE_URL` is required (`NEXTAUTH_*` are no longer used).

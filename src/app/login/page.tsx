@@ -1,102 +1,70 @@
 "use client";
 
-import { useState, Suspense } from "react";
-import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { LogIn } from "lucide-react";
+import { useState } from "react";
+import { Logo } from "@/components/logo";
+import { Alert, Spinner } from "@/components/ui";
+import { errorMessage } from "@/lib/client";
 
-function LoginForm() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/students";
+export default function LoginPage() {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
+    setBusy(true);
     setError(null);
-    setLoading(true);
-
-    const formData = new FormData(e.currentTarget);
-    const result = await signIn("credentials", {
-      username: formData.get("username"),
-      password: formData.get("password"),
-      redirect: false,
-    });
-
-    setLoading(false);
-
-    if (result?.error) {
-      setError("Invalid username or password");
-      return;
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error ?? "Sign in failed");
+      const next = new URLSearchParams(window.location.search).get("next");
+      // Full reload so every component picks up the new session.
+      window.location.assign(next && next.startsWith("/") && !next.startsWith("//") ? next : "/");
+    } catch (err) {
+      setError(errorMessage(err));
+      setBusy(false);
     }
-
-    router.push(callbackUrl);
-    router.refresh();
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="card w-full max-w-sm">
-        <div className="text-center mb-2">
-          <h1 className="text-2xl font-bold" style={{ color: "var(--brand-green-darker)" }}>
-            Al-Ismat Academy
-          </h1>
-          <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
-            Sign in to manage attendance
-          </p>
+    <div className="flex min-h-[70vh] items-center justify-center">
+      <form onSubmit={submit} className="card w-full max-w-sm p-6 sm:p-8">
+        <div className="mb-6 flex flex-col items-center text-center">
+          <div className="rounded-2xl bg-emerald-700 p-1">
+            <Logo className="h-12 w-12" />
+          </div>
+          <h1 className="mt-3 text-xl font-bold text-emerald-950">Al-Ismat Academy</h1>
+          <p className="text-sm text-emerald-900/60">Students, fees and challans. Sign in to continue.</p>
         </div>
-
-        {error && <div className="flash-error mt-4">{error}</div>}
-
-        <form onSubmit={handleSubmit} className="mt-4">
-          <div className="form-field mb-4">
-            <label htmlFor="username">Username</label>
-            <input id="username" name="username" type="text" required autoFocus />
+        {error && (
+          <div className="mb-4">
+            <Alert kind="error">{error}</Alert>
           </div>
-          <div className="form-field mb-4">
-            <label htmlFor="password">Password</label>
-            <div style={{ position: "relative" }}>
-              <input
-                id="password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                required
-                style={{ paddingRight: 64 }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                style={{
-                  position: "absolute",
-                  right: 10,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: "0.85rem",
-                  fontWeight: 600,
-                  color: "var(--brand-green-dark)",
-                }}
-              >
-                {showPassword ? "Hide" : "Show"}
-              </button>
-            </div>
-          </div>
-          <button className="btn w-full justify-center" type="submit" disabled={loading}>
-            {loading ? "Signing in…" : "Login"}
-          </button>
-        </form>
-      </div>
+        )}
+        <label className="label" htmlFor="username">Username</label>
+        <input
+          id="username"
+          className="input"
+          autoFocus
+          required
+          autoComplete="username"
+          autoCapitalize="none"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+        />
+        <label className="label mt-4" htmlFor="pw">Password</label>
+        <input id="pw" type="password" className="input" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <button className="btn-primary mt-6 w-full" disabled={busy}>
+          {busy ? <Spinner className="h-4 w-4" /> : <LogIn className="h-4 w-4" />} Sign in
+        </button>
+      </form>
     </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense>
-      <LoginForm />
-    </Suspense>
   );
 }

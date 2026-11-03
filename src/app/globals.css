@@ -1,165 +1,102 @@
 @import "tailwindcss";
 
-:root {
-  --background: #f3f6f4;
-  --foreground: #1c2b23;
-  --brand-green: #2e7d52;
-  --brand-green-dark: #235f3f;
-  --brand-green-darker: #1a4830;
-  --brand-green-light: #eaf5ef;
-  --brand-green-lighter: #f4faf6;
-  --text-muted: #5b6f65;
-  --border: #dde8e2;
-  --danger: #c0392b;
-  --danger-dark: #9c2c20;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
+:root {
+  color-scheme: light;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  background: #f3f7f4;
+  color: #10241a;
 }
 
-.card {
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 28px 32px;
-  box-shadow: 0 1px 2px rgba(20, 40, 30, 0.06), 0 4px 14px rgba(20, 40, 30, 0.06);
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600;
 }
 
-table.data-table {
-  width: 100%;
-  border-collapse: collapse;
+@layer components {
+  .card {
+    @apply rounded-2xl border border-emerald-900/10 bg-white shadow-sm;
+  }
+  .btn-primary {
+    @apply btn bg-emerald-700 text-white hover:bg-emerald-800;
+  }
+  .btn-secondary {
+    @apply btn border border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-50;
+  }
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700;
+  }
+  .btn-ghost {
+    @apply btn px-2.5 text-emerald-800 hover:bg-emerald-50;
+  }
+  .input {
+    @apply w-full rounded-xl border border-emerald-900/15 bg-white px-3 py-2.5 text-sm text-emerald-950 shadow-xs outline-none transition placeholder:text-emerald-900/35 focus:border-emerald-500 focus:ring-3 focus:ring-emerald-500/20;
+  }
+  .label {
+    @apply mb-1.5 block text-xs font-semibold tracking-wide text-emerald-900/70 uppercase;
+  }
 }
 
-table.data-table th, table.data-table td {
-  padding: 12px 14px;
-  text-align: left;
-  border-bottom: 1px solid var(--border);
-  font-size: 0.95rem;
+@page {
+  size: A4;
+  margin: 10mm;
 }
 
-table.data-table th {
-  background: var(--brand-green-light);
-  color: var(--brand-green-darker);
-  font-weight: 600;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+/* The fee challan is black and white like the printed template, in a print-like font. */
+.voucher {
+  font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  color: #000;
 }
 
-table.data-table tbody tr:hover { background: var(--brand-green-lighter); }
-table.data-table tbody tr:last-child td { border-bottom: none; }
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--brand-green);
-  color: #fff;
-  padding: 10px 18px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  cursor: pointer;
-  text-decoration: none;
-  font-size: 0.95rem;
-  font-weight: 600;
-  transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.05s ease;
-}
-
-.btn:hover {
-  background: var(--brand-green-dark);
-  box-shadow: 0 2px 8px rgba(46, 125, 82, 0.35);
-}
-
-.btn:active { transform: translateY(1px); }
-
-.btn-secondary {
-  background: #fff;
-  color: var(--brand-green-dark);
-  border: 1px solid var(--brand-green);
-}
-
-.btn-secondary:hover {
-  background: var(--brand-green-light);
-  box-shadow: none;
-}
-
-.btn-danger { background: var(--danger); }
-.btn-danger:hover { background: var(--danger-dark); box-shadow: 0 2px 8px rgba(192, 57, 43, 0.35); }
-
-.row-link {
-  color: var(--brand-green-dark);
-  text-decoration: none;
-  font-weight: 500;
-}
-.row-link:hover { text-decoration: underline; }
-
-.link-danger {
-  background: none;
-  border: none;
-  color: var(--danger);
-  cursor: pointer;
-  padding: 0;
-  font: inherit;
-  font-weight: 500;
-}
-.link-danger:hover { color: var(--danger-dark); text-decoration: underline; }
-
-.form-field label {
-  display: block;
-  margin-bottom: 6px;
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.form-field input, .form-field select {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 0.95rem;
-  background: #fbfdfc;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.form-field input:focus, .form-field select:focus {
-  outline: none;
-  border-color: var(--brand-green);
-  box-shadow: 0 0 0 3px rgba(46, 125, 82, 0.15);
-  background: #fff;
-}
-
-.tag {
-  display: inline-block;
-  background: var(--brand-green-light);
-  color: var(--brand-green-darker);
-  padding: 3px 12px;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.flash-error {
-  background: #fbeae8;
-  color: var(--danger-dark);
-  border: 1px solid #f2cfc9;
-  padding: 12px 16px;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  margin-bottom: 20px;
-}
-
-.empty-state {
-  text-align: center;
-  color: var(--text-muted);
-  padding: 24px 0;
+@media print {
+  html {
+    font-size: 11px;
+  }
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .no-print {
+    display: none !important;
+  }
+  /* The screen layout is a full-height flex column; on paper that can push out an empty last page. */
+  body {
+    display: block !important;
+    min-height: 0 !important;
+    background: white;
+  }
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  .card {
+    box-shadow: none !important;
+    overflow: visible !important;
+    break-inside: auto;
+  }
+  .print-keep,
+  tr {
+    break-inside: avoid;
+  }
+  thead {
+    display: table-header-group;
+  }
+  /* Challans: drop the on-screen scaling and print one sheet (two copies) per page. */
+  .voucher-scaler {
+    transform: none !important;
+    height: auto !important;
+  }
+  .voucher-sheet {
+    break-after: page;
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
+  .voucher-sheet:last-child {
+    break-after: auto;
+  }
 }
