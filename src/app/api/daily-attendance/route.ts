@@ -1,8 +1,11 @@
-import { handle, HttpError, readJson } from "@/lib/api";
+import { handle, HttpError, isId, parseId, readJson } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { isValidYmd } from "@/lib/format";
 import { CLASSES, DAY_STATUSES, type ClassName, type DayMark, type DayStatus } from "@/lib/types";
+
+/** Longest range one request may ask for (a year and a bit, enough for "This year"). */
+const MAX_RANGE_DAYS = 400;
 
 /** Marks between ?start= and ?end=, for one ?studentId= or one ?class= (or everyone). */
 export const GET = handle(async (req: Request) => {
@@ -11,7 +14,8 @@ export const GET = handle(async (req: Request) => {
   const start = params.get("start");
   const end = params.get("end");
   if (!isValidYmd(start) || !isValidYmd(end) || start > end) throw new HttpError(400, "Choose a valid date range");
-  const studentId = Number(params.get("studentId")) || null;
+  if (Date.parse(end) - Date.parse(start) > MAX_RANGE_DAYS * 86_400_000) throw new HttpError(400, `Choose a range of at most ${MAX_RANGE_DAYS} days`);
+  const studentId = params.get("studentId") ? parseId(params.get("studentId")) : null;
   const cls = params.get("class");
   if (cls && !CLASSES.includes(cls as ClassName)) throw new HttpError(400, "Unknown class");
 
@@ -36,7 +40,7 @@ export const PUT = handle(async (req: Request) => {
   if (!Array.isArray(marks) || marks.length === 0) throw new HttpError(400, "Nothing to save");
   if (marks.length > 1000) throw new HttpError(400, "Too many marks at once");
   for (const m of marks) {
-    if (!Number.isInteger(m.studentId) || !isValidYmd(m.day)) throw new HttpError(400, "Invalid student or date");
+    if (!m || typeof m !== "object" || !isId(m.studentId) || !isValidYmd(m.day)) throw new HttpError(400, "Invalid student or date");
     if (m.status !== null && !DAY_STATUSES.includes(m.status)) throw new HttpError(400, "Status must be present, late, absent or holiday");
   }
 

@@ -1,4 +1,4 @@
-import { handle, HttpError, parseMonth, readJson } from "@/lib/api";
+import { handle, HttpError, isId, parseId, parseMonth, readJson } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { isValidYmd } from "@/lib/format";
@@ -17,12 +17,12 @@ export const PUT = handle(async (req: Request) => {
     note?: string;
   }>(req);
   const { year, month } = parseMonth(new URLSearchParams({ year: String(body.year), month: String(body.month) }));
-  if (!Number.isInteger(body.studentId)) throw new HttpError(400, "Choose a student");
+  if (!isId(body.studentId)) throw new HttpError(400, "Choose a student");
   if (!PAYMENT_METHODS.includes(body.method as PaymentMethod)) throw new HttpError(400, "Choose how the fee was paid: Online or Cash");
   const amount = Number(body.amount);
   if (!Number.isFinite(amount) || amount <= 0 || amount > 10_000_000) throw new HttpError(400, "Enter the amount paid");
   if (!isValidYmd(body.paidOn)) throw new HttpError(400, "Enter the date it was paid");
-  const note = body.note?.trim().slice(0, 300) || null;
+  const note = typeof body.note === "string" ? body.note.trim().slice(0, 300) || null : null;
 
   const sql = await getDb();
   const [exists] = await sql`select 1 from students where id = ${body.studentId}`;
@@ -41,7 +41,7 @@ export const DELETE = handle(async (req: Request) => {
   await requireUser();
   const params = new URL(req.url).searchParams;
   const { year, month } = parseMonth(params);
-  const studentId = Number(params.get("studentId"));
+  const studentId = parseId(params.get("studentId"));
   const sql = await getDb();
   await sql`delete from fee_payments where student_id = ${studentId} and year = ${year} and month = ${month}`;
   return Response.json({ ok: true });

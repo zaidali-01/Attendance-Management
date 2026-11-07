@@ -10,6 +10,7 @@ export function hashPassword(password: string): string {
 
 /** Checks a password. Also accepts bcrypt hashes from the first version of the app. */
 export function verifyPassword(password: string, stored: string): boolean {
+  if (password.length > MAX_PASSWORD_LENGTH) return false;
   if (stored.startsWith("$2")) return bcrypt.compareSync(password, stored);
   const [scheme, salt, hash] = stored.split("$");
   if (scheme !== "scrypt" || !salt || !hash) return false;
@@ -22,3 +23,11 @@ export function verifyPassword(password: string, stored: string): boolean {
 export const needsRehash = (stored: string) => !stored.startsWith("scrypt$");
 
 export const MIN_PASSWORD_LENGTH = 6;
+/** Very long passwords are refused so hashing them can't be used to slow the server down. */
+export const MAX_PASSWORD_LENGTH = 200;
+
+let dummy: string | undefined;
+/** Checked when the username doesn't exist, so a wrong username takes as long as a wrong password. */
+export function dummyHash(): string {
+  return (dummy ??= hashPassword("not-a-real-password"));
+}

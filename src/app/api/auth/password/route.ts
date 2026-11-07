@@ -1,13 +1,14 @@
 import { handle, HttpError, readJson } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
-import { hashPassword, MIN_PASSWORD_LENGTH, verifyPassword } from "@/lib/password";
+import { hashPassword, MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, verifyPassword } from "@/lib/password";
 
 /** Change your own password. Signs out your other sessions. */
 export const PUT = handle(async (req: Request) => {
   const user = await requireUser();
-  const { currentPassword, newPassword } = await readJson<{ currentPassword?: string; newPassword?: string }>(req);
-  if (!currentPassword || !newPassword) throw new HttpError(400, "Enter your current and new password");
+  const { currentPassword, newPassword } = await readJson<{ currentPassword?: unknown; newPassword?: unknown }>(req);
+  if (typeof currentPassword !== "string" || typeof newPassword !== "string" || !currentPassword || !newPassword) throw new HttpError(400, "Enter your current and new password");
+  if (newPassword.length > MAX_PASSWORD_LENGTH) throw new HttpError(400, `New password must be at most ${MAX_PASSWORD_LENGTH} characters`);
   if (newPassword.length < MIN_PASSWORD_LENGTH) {
     throw new HttpError(400, `New password must be at least ${MIN_PASSWORD_LENGTH} characters`);
   }

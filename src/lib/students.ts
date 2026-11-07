@@ -4,6 +4,9 @@ import { CLASSES, type ClassName } from "./types";
 
 export const STUDENT_COLUMNS = "id, name, class_name, roll_no, monthly_fee, admission_form, created_at";
 
+/** The only columns a student update may change. */
+export const STUDENT_FIELDS = ["name", "class_name", "roll_no", "monthly_fee", "admission_form"] as const;
+
 export type StudentInput = {
   name: string;
   class_name: ClassName;

@@ -1,7 +1,7 @@
 import { handle, HttpError, parseId, readJson } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
-import { parseStudent, STUDENT_COLUMNS } from "@/lib/students";
+import { parseStudent, STUDENT_COLUMNS, STUDENT_FIELDS } from "@/lib/students";
 import type { Payment, Student, StudentDetail, WeeklyRecord } from "@/lib/types";
 
 /** One student with all fee payments and weekly attendance. */
@@ -26,7 +26,7 @@ export const PUT = handle(async (req: Request, ctx: RouteContext<"/api/students/
   if (Object.keys(patch).length === 0) throw new HttpError(400, "Nothing to update");
   const sql = await getDb();
   const [row] = await sql<Student[]>`
-    update students set ${sql(patch)} where id = ${id}
+    update students set ${sql(patch, ...(Object.keys(patch) as (keyof typeof patch)[]).filter((k) => STUDENT_FIELDS.includes(k)))} where id = ${id}
     returning ${sql.unsafe(STUDENT_COLUMNS)}`;
   if (!row) throw new HttpError(404, "Student not found");
   return Response.json(row);
